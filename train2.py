@@ -1,6 +1,14 @@
 '''
-Carregam el paquet de argparse per treballar desde la terminal, facilitar la 
-modificació de paràmetres i evitar errors.
+Aquest programa és una versió simplificada
+del programa train.py per treballar únicament
+amb els següents models:
+ > GCNN
+ > SGCNN
+ > MAGNET
+'''
+
+'''
+References: 
 '''
 import argparse
 from argparse import RawTextHelpFormatter
@@ -22,27 +30,18 @@ from torchsummary import summary
 # Carregam les dades e importam els models que hem definit
 from datasets.graph_data_reader import DataReader, GraphData
 from models.GCN import GCN
-from models.GAT import GAT
-from models.GraphSAGE import GraphSAGE
-from models.APPNP import APPNP
-from models.GIN import GIN
-from models.GraphUNet import GraphUNet
-from models.ARMA import ARMA
 from models.SGCNN import SGCNN
-from models.GraphResNet import GraphResNet
-from models.GraphDenseNet import GraphDenseNet
-from models.NodeRandomWalkNet import NodeRandomWalkNet
-from models.ExpandedSpatialGraphEmbeddingNet import ExpandedSpatialGraphEmbeddingNet
+
+# Codi per guardar resultats
 from utils import create_directory, save_result_csv
 
-model_list = ['GCN']
+model_list = ['GCN', 'SGCN', 'MAGNET']
 dataset_list = ['PROTEINS']
 readout_list = ['max', 'avg', 'sum']
 
-
-'''
-Cream un objecte ArgumentParser per definir els arguments que rebrà el programa
-'''
+#====================================================================================
+#           PARÀMETRES DEL PROGRAMA 
+#====================================================================================
 parser = argparse.ArgumentParser(formatter_class=RawTextHelpFormatter)
 
 # Target model & dataset & readout param
@@ -112,30 +111,9 @@ parser.add_argument('--fc_hidden', type=int, default=128,
 parser.add_argument('--dropout', type=float, default=0,
                     help='dropout rate of layer')
 
-# NodeRandomWalkNet param
-parser.add_argument('--walk_length', type=int, default=20,
-                    help='walk length of random walk')
-parser.add_argument('--num_walk', type=int, default=10,
-                    help='num_walk of random walk')
-parser.add_argument('--p', type=float, default=0.65,
-                    help='Possibility to return to the previous vertex, how well you navigate around')
-parser.add_argument('--q', type=float, default=0.35,
-                    help='Possibility of moving away from the previous vertex, how well you are exploring new places')
-
-# ExpandedSpatialGraphEmbeddingNet param
-parser.add_argument('--n_spatial_graph_embedding_model_layer', type=int, default=1,
-                    help='the number of spatial graph embedding model layers')
-parser.add_argument('--n_node_random_walk_model_layer', type=int, default=1,
-                    help='the number of node random walk model layers')
-parser.add_argument('--node_random_walk_model_name', default='LSTM',
-                    help='node random walk model name\n'+
-                    'LSTM/GRU')
-#parser.add_argument('--freeze_layer', default='FALSE',
-#                    help='the number of graph aggregation layers')
-#parser.add_argument('--fc_layer_type', default='A',
-#                    help='fully-connected layer type of ExpandedSpatialGraphEmbeddingNet')
-#parser.add_argument('--concat_dropout', type=float, default=0.0,
-#                    help='dropout rate of concat layer of ExpandedSpatialGraphEmbeddingNet')
+#=================================================================================
+#          ENTRENAMENT      
+#=================================================================================
 
 # Lletgim els arguments que ha introduit l'usuari
 args = parser.parse_args()
@@ -149,11 +127,6 @@ args.node_att = (args.node_att.upper()=='TRUE')
 # Hem de prendre un subconjunt de nodes; que es això??¿?
 args.graph_node_subsampling = (args.graph_node_subsampling.upper()=='TRUE')
 
-
-# Build random walk or not (if mode == NodeRandomWalkNet or ExpandedSpatialGraphEmbeddingNet)
-# En el cas de que treballem amb un model de camins aleatoris
-random_walk = ('NodeRandomWalkNet' in args.model_list or 'ExpandedSpatialGraphEmbeddingNet' in args.model_list or 'ALL' in args.model_list)
-
 # Choose target graph classification model
 if 'ALL' in args.model_list:
   args.model_list = model_list
@@ -161,6 +134,7 @@ else:
   for model in args.model_list:
     if not model in model_list:
       print('There are not available models in the target graph classification model list')
+      print('The models avaibles are:', model_list)
       sys.exit()
 
 print('Target model list:', args.model_list)
@@ -172,6 +146,7 @@ else:
   for dataset in args.dataset_list:
     if not dataset in dataset_list:
       print('There are not available datasets in the target graph dataset list')
+      print('The datasets avaibles are:', dataset_list)
       sys.exit()
 
 print('Target dataset list:', args.dataset_list)
@@ -183,6 +158,7 @@ else:
   for readout in args.readout_list:
     if not readout in readout_list:
       print('There are not available readouts in the target readout list')
+      print('The readouts avaible are:', readout_list)
       sys.exit()
 
 print('Target readout list:', args.readout_list)
@@ -194,6 +170,12 @@ else:
   device = 'cpu'
   
 print('Using device in train process:', device)
+
+#-------------------------------------- Fins aquí okey
+#   Coses pendents a entendre:
+#       o Què són els threads
+#       o Recompte dels paràmetres per entrenar
+#       o Funció entrenament
 
 if args.n_graph_subsampling > 0 and args.graph_node_subsampling:
   print('graph subsampling: random node removal')
@@ -216,77 +198,16 @@ for dataset_name in args.dataset_list:
                         q=args.q,
                         node2vec_hidden=args.agg_hidden
                         )
-    
+    # Prenem un model
     for model_name in args.model_list:
+      
+      # Prenem una funció readout
       for i, readout_name in enumerate(args.readout_list):
         print('-'*25)
         
         # Build graph classification model
         if model_name == 'GCN':
             model = GCN(n_feat=datareader.data['features_dim'],
-                    n_class=datareader.data['n_classes'],
-                    n_layer=args.n_agg_layer,
-                    agg_hidden=args.agg_hidden,
-                    fc_hidden=args.fc_hidden,
-                    dropout=args.dropout,
-                    readout=readout_name,
-                    device=device).to(device)
-        elif model_name == 'GAT':
-            model = GAT(n_feat=datareader.data['features_dim'],
-                    n_class=datareader.data['n_classes'],
-                    n_layer=args.n_agg_layer,
-                    agg_hidden=args.agg_hidden,
-                    fc_hidden=args.fc_hidden,
-                    dropout=args.dropout,
-                    readout=readout_name,
-                    device=device).to(device)
-        elif model_name == 'GraphSAGE':
-            model = GraphSAGE(n_feat=datareader.data['features_dim'],
-                    n_class=datareader.data['n_classes'],
-                    n_layer=args.n_agg_layer,
-                    agg_hidden=args.agg_hidden,
-                    fc_hidden=args.fc_hidden,
-                    dropout=args.dropout,
-                    readout=readout_name,
-                    device=device).to(device)
-        elif model_name == 'APPNP':
-            model = APPNP(n_feat=datareader.data['features_dim'],
-                    n_class=datareader.data['n_classes'],
-                    n_layer=args.n_agg_layer,
-                    agg_hidden=args.agg_hidden,
-                    fc_hidden=args.fc_hidden,
-                    dropout=args.dropout,
-                    readout=readout_name,
-                    device=device).to(device)
-        elif model_name == 'GIN':
-            model = GIN(n_feat=datareader.data['features_dim'],
-                    n_class=datareader.data['n_classes'],
-                    n_layer=args.n_agg_layer,
-                    agg_hidden=args.agg_hidden,
-                    fc_hidden=args.fc_hidden,
-                    dropout=args.dropout,
-                    readout=readout_name,
-                    device=device).to(device)
-        elif model_name == 'GraphUNet':
-            model = GraphUNet(n_feat=datareader.data['features_dim'],
-                    n_class=datareader.data['n_classes'],
-                    n_layer=args.n_agg_layer,
-                    agg_hidden=args.agg_hidden,
-                    fc_hidden=args.fc_hidden,
-                    dropout=args.dropout,
-                    readout=readout_name,
-                    device=device).to(device)
-        elif model_name == 'GraphResNet':
-            model = GraphResNet(n_feat=datareader.data['features_dim'],
-                    n_class=datareader.data['n_classes'],
-                    n_layer=args.n_agg_layer,
-                    agg_hidden=args.agg_hidden,
-                    fc_hidden=args.fc_hidden,
-                    dropout=args.dropout,
-                    readout=readout_name,
-                    device=device).to(device)
-        elif model_name == 'ARMA':
-            model = ARMA(n_feat=datareader.data['features_dim'],
                     n_class=datareader.data['n_classes'],
                     n_layer=args.n_agg_layer,
                     agg_hidden=args.agg_hidden,
@@ -302,63 +223,7 @@ for dataset_name in args.dataset_list:
                     fc_hidden=args.fc_hidden,
                     dropout=args.dropout,
                     readout=readout_name,
-                    device=device).to(device)
-        elif model_name == 'GraphDenseNet':
-            model = GraphDenseNet(n_feat=datareader.data['features_dim'],
-                    n_class=datareader.data['n_classes'],
-                    n_layer=args.n_agg_layer,
-                    agg_hidden=args.agg_hidden,
-                    fc_hidden=args.fc_hidden,
-                    dropout=args.dropout,
-                    readout=readout_name,
-                    device=device).to(device)
-        elif model_name == 'NodeRandomWalkNet':
-            model = NodeRandomWalkNet(n_feat=datareader.data['features_dim'],
-                    n_class=datareader.data['n_classes'],
-                    n_layer=args.n_agg_layer,
-                    agg_hidden=args.agg_hidden,
-                    fc_hidden=args.fc_hidden,
-                    dropout=args.dropout,
-                    readout=readout_name,
-                    device=device,
-                    walk_length=args.walk_length,
-                    node_random_walk_model_name=args.node_random_walk_model_name).to(device)
-        elif model_name == 'ExpandedSpatialGraphEmbeddingNet':
-            model = ExpandedSpatialGraphEmbeddingNet(
-                    n_class=datareader.data['n_classes'],
-                    agg_hidden=args.agg_hidden,
-                    fc_hidden=args.fc_hidden,
-                    dropout=args.dropout,
-                    readout=readout_name,
-                    device=device,
-                    walk_length=args.walk_length,
-                    n_spatial_graph_embedding_model_layer=args.n_spatial_graph_embedding_model_layer,
-                    n_node_random_walk_model_layer=args.n_node_random_walk_model_layer,
-                    node_random_walk_model_name=args.node_random_walk_model_name).to(device) 
-#        elif model_name == 'ExpandedSpatialGraphEmbeddingNet':
-#            model = ExpandedSpatialGraphEmbeddingNet(
-#                    n_class=datareader.data['n_classes'],
-#                    fc_hidden=args.fc_hidden,
-#                    dropout=args.dropout,
-#                    readout=readout_name,
-#                    device=device,
-#                    dataset_name=dataset_name,
-#                    n_folds=args.n_folds,
-#                    freeze_layer=args.freeze_layer,
-#                    fc_dropout=args.concat_dropout).to(device)  
-#         elif model_name == 'ExpandedSpatialGraphEmbeddingNet':
-#             model = ExpandedSpatialGraphEmbeddingNet(
-#                     n_class=datareader.data['n_classes'],
-#                     fc_hidden=args.fc_hidden,
-#                     dropout=args.dropout,
-#                     readout=readout_name,
-#                     device=device,
-#                     dataset_name=dataset_name,
-#                     n_folds=args.n_folds,
-#                     freeze_layer=args.freeze_layer,
-#                     fc_layer_type=args.fc_layer_type,
-#                     concat_dropout=args.concat_dropout).to(device)  
-                                                         
+                    device=device).to(device)                                                 
         print(model)
         print('Readout:', readout_name)
         
@@ -486,16 +351,20 @@ for dataset_name in args.dataset_list:
                 create_directory('./save_model')
                 create_directory('./save_model/' + model_name)
                 
-                if model_name == 'ExpandedSpatialGraphEmbeddingNet':
-                    file_name = model_name + '_' + dataset_name + '_' + readout_name + '_' + str(fold_id) + '_' + args.node_random_walk_model_name + '_' + str(args.n_spatial_graph_embedding_model_layer) + '_' + str(args.n_node_random_walk_model_layer) + '_' + str(args.walk_length) + '_' + str(args.num_walk) + '_' + str(args.p) + '_' + str(args.q) + '_h' + str(args.agg_hidden) + '.pt'
-                elif model_name == 'NodeRandomWalkNet':
-                    file_name = model_name + '_' + dataset_name + '_' + readout_name + '_' + str(fold_id) + '_' + args.node_random_walk_model_name + '_' + str(args.n_agg_layer) + '_' + str(args.walk_length) + '_' + str(args.num_walk) + '_' + str(args.p) + '_' + str(args.q) + '_h' + str(args.agg_hidden) + '.pt'
-                else:
-                    file_name = model_name + '_' + dataset_name + '_' + readout_name + '_' + str(fold_id) + '_' + str(args.n_agg_layer) + '_h' + str(args.agg_hidden) + '.pt'
-          
+                # Guardam els models en un arxiu .pt que serveix per lletgir-lo amb el paquet torch.
+                file_name = model_name + '_' + dataset_name + '_' + readout_name + '_' + str(fold_id) + '_' + str(args.n_agg_layer) + '_h' + str(args.agg_hidden) + '.pt'
+
                 torch.save(model, './save_model/' + model_name + '/' + file_name)
+                '''
+                Els arxius .pt els podem lletgir de manera sencilla amb torch:
+                    > import torch
+                    > # Definim un model qualsevol igual que el que volem carregar
+                    > model = MyModel()
+                    > model.load_state_dict(torch.load("model.pt"))
+                '''
+
                 print('Complete to save model')
-    
+
         print(acc_folds)
         print('{}-fold cross validation avg acc (+- std): {} ({})'.format(args.n_folds, statistics.mean(acc_folds), statistics.stdev(acc_folds)))
 
@@ -511,27 +380,13 @@ for dataset_name in args.dataset_list:
         result_list.append(statistics.mean(acc_folds))
         result_list.append(statistics.stdev(acc_folds))
         result_list.append(statistics.mean(time_folds))
-        
-        if model_name == 'ExpandedSpatialGraphEmbeddingNet':
-            file_name = model_name + '_' + args.node_random_walk_model_name + '_' + str(args.n_spatial_graph_embedding_model_layer) + '_' + str(args.n_node_random_walk_model_layer) + '_' + str(args.walk_length) + '_' + str(args.num_walk) + '_' + str(args.p) + '_' + str(args.q) + '_h' + str(args.agg_hidden) + '_' + '10_cross_validation.csv'
-            if args.n_graph_subsampling > 0 and args.graph_node_subsampling:
-              file_name = model_name + '_' + args.node_random_walk_model_name + '_' + str(args.n_spatial_graph_embedding_model_layer) + '_' + str(args.n_node_random_walk_model_layer) + '_' + str(args.walk_length) + '_' + str(args.num_walk) + '_' + str(args.p) + '_' + str(args.q) + '_h' + str(args.agg_hidden) + '_' + 'node_graph_subsampling' + '_' + '10_cross_validation.csv'
-            elif args.n_graph_subsampling > 0:
-              file_name = model_name + '_' + args.node_random_walk_model_name + '_' + str(args.n_spatial_graph_embedding_model_layer) + '_' + str(args.n_node_random_walk_model_layer) + '_' + str(args.walk_length) + '_' + str(args.num_walk) + '_' + str(args.p) + '_' + str(args.q) + '_h' + str(args.agg_hidden) + '_' + 'edge_graph_subsampling' + '_' + '10_cross_validation.csv'   
-              
-        elif model_name == 'NodeRandomWalkNet':
-            file_name = model_name + '_' + args.node_random_walk_model_name + '_' + str(args.n_agg_layer) + '_' + str(args.walk_length) + '_' + str(args.num_walk) + '_' + str(args.p) + '_' + str(args.q) + '_h' + str(args.agg_hidden) + '_' + '10_cross_validation.csv'
-            if args.n_graph_subsampling > 0 and args.graph_node_subsampling:
-              file_name = model_name + '_' + args.node_random_walk_model_name + '_' + str(args.n_agg_layer) + '_' + str(args.walk_length) + '_' + str(args.num_walk) + '_' + str(args.p) + '_' + str(args.q) + '_h' + str(args.agg_hidden) + '_' + 'node_graph_subsampling' + '_' + '10_cross_validation.csv'
-            elif args.n_graph_subsampling > 0:
-              file_name = model_name + '_' + args.node_random_walk_model_name + '_' + str(args.n_agg_layer) + '_' + str(args.walk_length) + '_' + str(args.num_walk) + '_' + str(args.p) + '_' + str(args.q) + '_h' + str(args.agg_hidden) + '_' + 'edge_graph_subsampling' + '_' + '10_cross_validation.csv'            
-                                                           
-        else:
-            file_name = model_name + '_' + str(args.n_agg_layer) + '_h' + str(args.agg_hidden) + '_' + '10_cross_validation.csv'
-            if args.n_graph_subsampling > 0 and args.graph_node_subsampling:
-              file_name = model_name + '_' + str(args.n_agg_layer) + '_h' + str(args.agg_hidden) + '_' + 'node_graph_subsampling' + '_' + '10_cross_validation.csv'
-            elif args.n_graph_subsampling > 0:
-              file_name = model_name + '_' + str(args.n_agg_layer) + '_h' + str(args.agg_hidden) + '_' + 'edge_graph_subsampling' + '_' + '10_cross_validation.csv'
+                         
+
+        file_name = model_name + '_' + str(args.n_agg_layer) + '_h' + str(args.agg_hidden) + '_' + '10_cross_validation.csv'
+        if args.n_graph_subsampling > 0 and args.graph_node_subsampling:
+          file_name = model_name + '_' + str(args.n_agg_layer) + '_h' + str(args.agg_hidden) + '_' + 'node_graph_subsampling' + '_' + '10_cross_validation.csv'
+        elif args.n_graph_subsampling > 0:
+          file_name = model_name + '_' + str(args.n_agg_layer) + '_h' + str(args.agg_hidden) + '_' + 'edge_graph_subsampling' + '_' + '10_cross_validation.csv'
         
         if i == 0:
           save_result_csv('./test_result/' + model_name + '/' + file_name, result_list, True)

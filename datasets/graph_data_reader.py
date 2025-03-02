@@ -1,6 +1,11 @@
 import networkx as nx
 import numpy as np
 import os
+'''
+Carregam el paquet os.path.join() perquè treballarem
+amb moltes carpetes i diferents rutes per obrir arxius. 
+Així evitam problemes de format en diferents ordinadors.
+'''
 from os.path import join as pjoin
 import copy
 
@@ -32,8 +37,12 @@ class DataReader():
                  folds=10):
 
         self.data_dir = data_dir
+
+        # Que es rnd_state?
         self.rnd_state = np.random.RandomState() if rnd_state is None else rnd_state
         self.use_cont_node_attr = use_cont_node_attr
+
+        # Que hace estta función?
         files = os.listdir(self.data_dir)
         
         print('data path:', self.data_dir)
@@ -193,13 +202,21 @@ class DataReader():
 
         return train_ids, test_ids
 
+    '''
+    Funcio per transformar un arxiu en una llista on cada element es
+    una linia amb un format definit per la funció line_parse_fn
+    '''
     def parse_txt_file(self, fpath, line_parse_fn=None):
         with open(pjoin(self.data_dir, fpath), 'r') as f:
             lines = f.readlines()
+            '''
+            Que implica que sigui 'None'? s'afegeix ''?
+            '''
         data = [line_parse_fn(s) if line_parse_fn is not None else s for s in lines]
         
         return data
     
+    # Funció per lletgir la matriu d'adjecència
     def read_graph_adj(self, fpath, nodes, graphs):
         edges = self.parse_txt_file(fpath, line_parse_fn=lambda s: s.split(','))
         adj_dict = {}
@@ -207,6 +224,8 @@ class DataReader():
             node1 = int(edge[0].strip()) - 1  # -1 because of zero-indexing in our code
             node2 = int(edge[1].strip()) - 1
             graph_id = nodes[node1]
+
+            # La función assert 
             assert graph_id == nodes[node2], ('invalid data', graph_id, nodes[node2])
             if graph_id not in adj_dict:
                 n = len(graphs[graph_id])
@@ -220,6 +239,10 @@ class DataReader():
         
         return adj_list
         
+    '''
+    Funció per lletgir graph_indicator.txt retornant dos diccionaris.
+    El primer node_id -> graph_id i el segon graph_id -> list(nodes_id)
+    '''
     def read_graph_nodes_relations(self, fpath):
         graph_ids = self.parse_txt_file(fpath, line_parse_fn=lambda s: int(s.rstrip()))
         nodes, graphs = {}, {}
@@ -233,6 +256,12 @@ class DataReader():
             graphs[graph_id] = np.array(graphs[graph_id])
         return nodes, graphs
 
+    '''
+    Funció que llegeix node_attributes.txt i retorna una llista de 
+    llistes dels atributs dels nodes. És a dir, els atributs del graf
+    i-èssim estan en la posició i-èssima d'aquesta llista (si indexam 
+    els grafs desde 0)
+    '''
     def read_node_features(self, fpath, nodes, graphs, fn):
         node_features_all = self.parse_txt_file(fpath, line_parse_fn=fn)
         node_features = {}
@@ -248,17 +277,20 @@ class DataReader():
         node_features_lst = [node_features[graph_id] for graph_id in sorted(list(graphs.keys()))]
         return node_features_lst
 
+    #
     def get_node_features_degree(self, adj_list):
         node_features_list = []
-
+ 
         for adj in adj_list:
             sub_list = []
-            for feature in nx.from_numpy_matrix(np.array(adj)).degree():
+        
+            for feature in nx.from_numpy_array(np.array(adj)).degree():
                 sub_list.append(feature[1])
             node_features_list.append(np.array(sub_list))
 
         return node_features_list
-        
+
+    #      
     def get_max_neighbor(self, degree_list):
         max_neighbor_list = []
         
@@ -267,6 +299,7 @@ class DataReader():
 
         return max_neighbor_list
 
+    #
     def get_node_count_list(self, adj_list):
         node_count_list = []
         
@@ -275,6 +308,7 @@ class DataReader():
                         
         return node_count_list
 
+    #
     def get_edge_matrix_list(self, adj_list):
         edge_matrix_list = []
         max_edge_matrix = 0
@@ -291,6 +325,7 @@ class DataReader():
                         
         return edge_matrix_list, max_edge_matrix
 
+    #
     def get_edge_matrix_count_list(self, edge_matrix_list):
         edge_matrix_count_list = []
         
@@ -298,7 +333,8 @@ class DataReader():
             edge_matrix_count_list.append(len(edge_matrix))
                         
         return edge_matrix_count_list
-    
+
+    # 
     def get_neighbor_dic_list(self, adj_list, N_nodes_max):
         neighbor_dic_list = []
         
@@ -313,6 +349,7 @@ class DataReader():
             neighbor_dic_list.append(np.array(neighbors))
         
         return neighbor_dic_list    
+
 
 class GraphData(torch.utils.data.Dataset):
     def __init__(self,

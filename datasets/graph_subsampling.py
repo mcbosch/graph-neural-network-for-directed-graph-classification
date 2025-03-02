@@ -4,7 +4,11 @@ import random
 import matplotlib.pyplot as plt
 import copy
 
+#########################
+# A PRIORI CREC QUE NO MOS INTERESSA --> graph_log?¿¿?¿
+
 def graph_subsampling_random_node_removal(adj, rate, log=True):
+
     if log: graph_log('--input graph--', adj)
 
     # Get number of the node
