@@ -186,12 +186,13 @@ for dataset_name in args.dataset_list:
     print('-'*50)
     
     print('Target dataset:', dataset_name)
+
     # Build graph data reader: IMDB-BINARY, IMDB-MULTI, ...
     datareader = DataReader(data_dir='./datasets/%s/' % dataset_name.upper(),
                         rnd_state=np.random.RandomState(args.seed),
                         folds=args.n_folds,           
                         use_cont_node_attr=False,
-                        random_walk=random_walk,
+                        random_walk=None,
                         num_walk=args.num_walk,
                         walk_length=args.walk_length,
                         p=args.p,
