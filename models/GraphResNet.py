@@ -21,10 +21,7 @@ class GraphResNet(nn.Module):
         self.graph_convolution_layer = GraphConvolutionLayer(n_feat, agg_hidden, device)
         
         # Graph resnet layer
-        self.graph_resnet_layers = []
-        for i in range(self.n_layer):
-             self.graph_resnet_layers.append(GraphResNetLayer(agg_hidden, agg_hidden, device))
-        
+        self.graph_resnet_layers = nn.ModuleList([GraphResNetLayer(agg_hidden, agg_hidden, device) for _ in range(self.n_layer)])
         # Fully-connected layer
         self.fc1 = nn.Linear(agg_hidden, fc_hidden)
         self.fc2 = nn.Linear(fc_hidden, n_class)
