@@ -27,13 +27,7 @@ class SGCNN(nn.Module):
         self.readout_dim = agg_hidden
         
         # spline CNN layer
-        self.sgcnn_layers = []
-        for i in range(n_layer):
-            if i == 0:
-                sgcnn = SGConv(n_feat, agg_hidden, K=K).to(device)
-            else:
-                sgcnn = SGConv(agg_hidden, agg_hidden, K=K).to(device)
-            self.sgcnn_layers.append(sgcnn)
+        self.sgcnn_layers = nn.ModuleList([SGConv(n_feat, agg_hidden, K=K).to(device) if i==0 else SGConv(agg_hidden, agg_hidden, K=K).to(device) for i in range(n_layer)])
         
         # Fully-connected layer
         self.fc1 = nn.Linear(self.readout_dim, fc_hidden)
