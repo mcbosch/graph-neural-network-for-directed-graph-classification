@@ -29,13 +29,9 @@ class GIN(nn.Module):
         eps = nn.Parameter(torch.zeros(n_layer)).to(device)
         
         # Graph convolution layer
-        self.graph_isomorphism_layers = []
-        for i in range(n_layer):
-            if i == 0:
-                self.graph_isomorphism_layers.append(GraphIsomorphismLayer(i, n_feat, agg_hidden, neighbor_pooling_type, learn_eps, eps, device))
-            else:
-                self.graph_isomorphism_layers.append(GraphIsomorphismLayer(i, agg_hidden, agg_hidden, neighbor_pooling_type, learn_eps, eps, device))
-
+        self.graph_isomorphism_layers = nn.ModuleList([
+            GraphIsomorphismLayer(i, n_feat, agg_hidden, neighbor_pooling_type, learn_eps, eps, device) if i == 0 else
+            GraphIsomorphismLayer(i, agg_hidden, agg_hidden, neighbor_pooling_type, learn_eps, eps, device) for i in range(n_layer)])
         # List of batchnorms applied to the output of MLP (input of the final prediction linear layer)
         self.batch_norms = torch.nn.ModuleList()
         
