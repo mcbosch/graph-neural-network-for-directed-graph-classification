@@ -21,10 +21,8 @@ class GraphDenseNet(nn.Module):
         self.graph_convolution_layer = GraphConvolutionLayer(n_feat, agg_hidden, device)
         
         # Graph densenet layer
-        self.graph_densenet_layers = []
-        for i in range(self.n_layer):
-            self.graph_densenet_layers.append(GraphDenseNetLayer(agg_hidden, agg_hidden, device))
-        
+        self.graph_densenet_layers = nn.ModuleList([GraphDenseNetLayer(agg_hidden, agg_hidden, device) for _ in range(self.n_layer)])
+
         # Fully-connected layer
         self.fc1 = nn.Linear((agg_hidden * 4), fc_hidden)
         self.fc2 = nn.Linear(fc_hidden, n_class)
