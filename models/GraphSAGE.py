@@ -28,12 +28,8 @@ class GraphSAGE(nn.Module):
         self.readout_dim = agg_hidden * n_layer
         
         # Graph sage layer
-        self.graph_sage_layers = []
-        for i in range(n_layer):
-            if i == 0:
-                sage = SAGEConv(n_feat, agg_hidden).to(device)
-            else:
-                sage = SAGEConv(agg_hidden, agg_hidden).to(device)
+        self.graph_sage_layers = nn.ModuleList([SAGEConv(n_feat, agg_hidden).to(device) if i == 0 else SAGEConv(agg_hidden, agg_hidden).to(device) for i in range(n_layer)])
+
             sage.aggr = self.aggregation
             self.graph_sage_layers.append(sage)
         
