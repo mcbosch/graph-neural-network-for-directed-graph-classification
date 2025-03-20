@@ -26,13 +26,9 @@ class ARMA(nn.Module):
         self.readout_dim = agg_hidden
 
         # ARMA layer
-        self.arma_layers = []
-        for i in range(n_layer):
-            if i == 0:
-                arma = ARMAConv(n_feat, agg_hidden, num_stacks=num_stacks, shared_weights=True, dropout=dropout).to(device)
-            else:
-                arma = ARMAConv(agg_hidden, agg_hidden, num_stacks=num_stacks, shared_weights=True, dropout=dropout, act=lambda x: x).to(device)
-            self.arma_layers.append(arma)
+        self.arma_layers = nn.ModuleList([
+            ARMA(n_feat, agg_hidden, num_stacks=num_stacks, shared_weights=True, dropout=dropout).to(device) if i == 0 else 
+            ARMAConv(agg_hidden, agg_hidden, num_stacks=num_stacks, shared_weights=True, dropout=dropout, act=lambda x: x).to(device) for i in range(n_layer)])
 
         # Fully-connected layer
         self.fc1 = nn.Linear(self.readout_dim, fc_hidden)
