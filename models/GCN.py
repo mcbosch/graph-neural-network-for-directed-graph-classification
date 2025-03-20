@@ -21,12 +21,9 @@ class GCN(nn.Module):
         self.readout = readout
         
         # Graph convolution layer
-        self.graph_convolution_layers = []
-        for i in range(n_layer):
-           if i == 0:
-             self.graph_convolution_layers.append(GraphConvolutionLayer(n_feat, agg_hidden, device))
-           else:
-             self.graph_convolution_layers.append(GraphConvolutionLayer(agg_hidden, agg_hidden, device))
+        self.graph_convolution_layers = nn.ModuleList([
+            GraphConvolutionLayer(n_feat, agg_hidden, device) if i==0 else
+            GraphConvolutionLayer(agg_hidden, agg_hidden, device) for i in range(n_layer)])
         
         # Fully-connected layer
         self.fc1 = nn.Linear(agg_hidden, fc_hidden)
