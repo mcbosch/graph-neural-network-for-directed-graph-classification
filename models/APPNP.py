@@ -26,10 +26,7 @@ class APPNP(nn.Module):
         self.readout_dim = n_feat * n_layer
         
         # APPNP layer
-        self.appnp_layers = []
-        for i in range(n_layer):
-            appnp = APPNP_layer(K, alpha).to(device)
-            self.appnp_layers.append(appnp)
+        self.appnp_layers = nn.ModuleList([APPNP_layer(K,alpha).to(device) for _ in range(n_layer)])
         
         # Fully-connected layer
         self.fc1 = nn.Linear(self.readout_dim, fc_hidden)
