@@ -22,9 +22,7 @@ class GAT(nn.Module):
         self.readout = readout
         
         # Graph attention layer
-        self.graph_attention_layers = []
-        for i in range(self.n_layer):
-          self.graph_attention_layers.append(GraphAttentionLayer(n_feat, agg_hidden, dropout, device))
+        self.graph_attention_layers = nn.ModuleList([GraphAttentionLayer(n_feat, agg_hidden, dropout, device) for _ in range(self.n_layer)])
                     
         # Fully-connected layer
         self.fc1 = nn.Linear(agg_hidden*n_layer, fc_hidden)
