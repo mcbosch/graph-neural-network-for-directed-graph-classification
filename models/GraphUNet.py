@@ -24,12 +24,9 @@ class GraphUNet(nn.Module):
         pooling_rations = [0.8 - (i * 0.1) if i < 3 else 0.5 for i in range(n_layer)]
            
         # Graph unet layer
-        self.graph_unet_layers = []
-        for i in range(n_layer):
-           if i == 0:
-             self.graph_unet_layers.append(GraphUNetLayer(n_feat, agg_hidden, pooling_rations[i], device))
-           else:
-             self.graph_unet_layers.append(GraphUNetLayer(agg_hidden, agg_hidden, pooling_rations[i], device))
+        self.graph_unet_layers = nn.ModuleList([
+            GraphUNetLayer(n_feat, agg_hidden, pooling_rations[i], device) if i == 0 else
+            GraphUNetLayer(agg_hidden, agg_hidden, pooling_rations[i], device) for i in range(n_layer)])
         
         # Fully-connected layer
         self.fc1 = nn.Linear(agg_hidden, fc_hidden)
