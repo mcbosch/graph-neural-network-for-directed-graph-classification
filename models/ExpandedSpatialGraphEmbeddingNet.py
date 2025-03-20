@@ -29,10 +29,8 @@ class ExpandedSpatialGraphEmbeddingNet(nn.Module):
 
         # Spatial graph embedding model
         if spatial_graph_embedding_model_name == 'GCN':
-            self.graph_convolution_layers = []
-            for i in range(n_spatial_graph_embedding_model_layer):
-                self.graph_convolution_layers.append(GraphConvolutionLayer(agg_hidden, agg_hidden, device))
-                
+            self.graph_convolution_layers = nn.ModuleList([GraphConvolutionLayer(agg_hidden, agg_hidden, device) for _ in range(n_spatial_graph_embedding_model_layer)])
+
         # Fully-connected layer
         self.fc1 = nn.Linear(agg_hidden, fc_hidden)
         self.fc2 = nn.Linear(fc_hidden, n_class)
